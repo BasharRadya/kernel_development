@@ -14,7 +14,9 @@ char *get_current_dir_name(void);
 void print_pwd(void)
 {
 	char *pwd = get_current_dir_name();
+
 	printf("%s$ ", pwd);
+	fflush(stdout);
 	free(pwd);
 }
 
@@ -28,7 +30,6 @@ int sub_split(char *s, int start)
 	}
 	return count;
 }
-
 char *make_sub_spliot(char *s, int start, int end)
 {
 	int sz = end - start + 1;
@@ -40,7 +41,6 @@ char *make_sub_spliot(char *s, int start, int end)
 	new_s[sz - 1] = '\0';
 	return new_s;
 }
-
 char **split(char *s, int *num_of_words)
 {
 	int length = strlen(s);
@@ -48,12 +48,11 @@ char **split(char *s, int *num_of_words)
 	int num_words = 0;
 	int i = 0;
 
-	while (i + 1 < length) {
+	while (i < length) {
 		int tmp = sub_split(s, i);
 
 		if (tmp != 0) {
 			char *c = make_sub_spliot(s, i, i + tmp);
-
 			arr[num_words] = c;
 			num_words++;
 			i = i + tmp;
@@ -75,10 +74,9 @@ char **get_input(int *x)
 		free(input);
 		return NULL;
 	} else if (byteread != -1) {
-		input[strcspn(input, "\n")] =
-			'\0';
-		// delete \n at the end and if tis not their then we are overriding null
-		// terminator with null terminator
+		//delete \n at the end and if tis not their then we are
+		// overriding null terminator with null terminator
+		input[strcspn(input, "\n")] = '\0';
 		char **arr = split(input, x);
 
 		free(input);
@@ -95,15 +93,37 @@ void free_all(char **c, int num_of_words)
 	}
 	free((char *)c);
 }
-
 void handle_command(char **arr, int num_words)
 {
-	fprintf(stderr, "Unrecognized command: %s\n", arr[0]);
+	if (strcmp(arr[0], "exit") == 0) {
+		if (num_words != 1) {
+			fprintf(stderr, "exit takes no arguments\n");
+			return;
+		}
+		exit(0);
+	} else if (strcmp(arr[0], "cd") == 0) {
+		if (num_words != 2) {
+			fprintf(stderr, "Usage cd: cd [dir]\n");
+			return;
+		}
+		if (chdir(arr[1]) == -1) {
+			perror("Error changing directory");
+		};
 
-	//this should be alwys be last
-	free_all(arr, num_words);
+	} else if (strcmp(arr[0], "exec") == 0) {
+		if (num_words < 2) {
+			fprintf(stderr, "exec takes at least one argument\n");
+			return;
+		}
+		arr[num_words] = NULL;
+
+		execv(arr[1], &arr[1]);
+		perror("error in exec cmd");
+		// execv(const char *path, char *const argv[]);
+	} else {
+		fprintf(stderr, "Unrecognized command: %s\n", arr[0]);
+	}
 }
-
 int main(void)
 {
 	while (1) {
@@ -115,6 +135,7 @@ int main(void)
 			continue;
 		}
 		handle_command(arr, num_words);
+		free_all(arr, num_words);
 	}
 	return 0;
 }
