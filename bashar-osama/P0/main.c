@@ -20,10 +20,23 @@ void get_input(void)
 	size_t len = 0;
 	ssize_t byteread = getline(&input, &len, stdin);
 
-	if (byteread == -1) {
+	if (byteread == 1) {
+		if (input[0] != '\n') {
+			fprintf(stderr, "Unrecognized command\n");
+		}
+	} else {
 		exit(0);
 	}
+
 	free(input);
+
+	//	if (byteread == 1 && input[0] == '\n') {
+	//	} else if (byteread != -1) {
+	//		fprintf(stderr, "Unrecognized command\n");
+	//	} else {
+	//		exit(0);
+	//	}
+	//	free(input);
 }
 
 int main(void)
