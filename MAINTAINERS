@@ -4,3 +4,7 @@
 ## Subsystem `bashar-osama`
 - Directory: bashar-osama/
 - Lead: bashar-osama <bashar-osama@spring2024-iit.kdlp.underground.software>
+
+# Add main.c
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+F:	bashar-osama/P0/main.c
