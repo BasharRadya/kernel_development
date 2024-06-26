@@ -11,6 +11,9 @@
 #include <sys/wait.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#include <pwd.h>
+#include <sys/types.h>
+
 char *get_current_dir_name(void);
 
 void print_pwd(void)
@@ -69,7 +72,6 @@ char **split(char *s, int *num_of_words, funptr(checker))
 
 		if (tmp != 0) {
 			char *c = make_sub_spliot(s, i, i + tmp);
-
 			arr[num_words] = c;
 			num_words++;
 			i = i + tmp;
@@ -91,9 +93,9 @@ char **get_input(int *x, funptr(checker))
 		free(input);
 		return NULL;
 	} else if (byteread != -1) {
-		// delete \n at the end and if tis not their then
-		// we are overriding null terminator with null terminator
 		input[strcspn(input, "\n")] = '\0';
+		// delete \n at the end and if tis not
+		// their then we are overriding null terminator with null terminator
 		char **arr = split(input, x, checker);
 
 		free(input);
@@ -115,9 +117,8 @@ void do_execv(char **arr, int num_words, int start)
 {
 	//there is enough space in arr
 	arr[num_words] = NULL;
-
 	execv(arr[start], &arr[start]);
-	perror("execv failed");
+	perror("error in cmd execv");
 }
 
 void handle_command(char **arr, int num_words);
@@ -196,6 +197,85 @@ void handle_command(char **arr, int num_words)
 	}
 }
 
+bool is_suit_for_sub(char *cur_word)
+{
+	return cur_word[0] == '~';
+}
+
+int till_slash_or_nullptr(char *cur_word)
+{
+	int i = 0;
+
+	while (cur_word[i] != '/' && cur_word[i] != '\0') {
+		i++;
+	}
+	return i;
+}
+
+char *get_sub_directive(char *cur_word)
+{
+	int x = till_slash_or_nullptr(cur_word);
+	char *new_dir = (char *)malloc(sizeof(char) * (x));
+
+	strncpy(new_dir, cur_word + 1, x - 1);
+	new_dir[x - 1] = '\0';
+	return new_dir;
+}
+
+char *get_sub_directory(char *directive)
+{
+	int length = strlen(directive);
+
+	if (length == 0) {
+		char *env = getenv("HOME");
+		char *new_env =
+			(char *)malloc(sizeof(char) * (strlen(env) + 1));
+
+		strcpy(new_env, env);
+		return new_env;
+
+	} else {
+		struct passwd *pwd = getpwnam(directive);
+		char *new_dir = (char *)malloc(sizeof(char) *
+					       (strlen(pwd->pw_dir) + 1));
+
+		strcpy(new_dir, pwd->pw_dir);
+		return new_dir;
+	}
+}
+
+char *do_sub(char *cur_word, char *directive, char *subs)
+{
+	int new_len = (strlen(cur_word) - strlen(directive) - 1 + strlen(subs));
+	char *new_dir = (char *)malloc(sizeof(char) * (new_len + 1));
+
+	if (strlen(cur_word) == (strlen(directive) + 1)) {
+		sprintf(new_dir, "%s", subs);
+	} else {
+		sprintf(new_dir, "%s%s", subs,
+			(cur_word + (strlen(directive) + 1)));
+	}
+	return new_dir;
+}
+
+void preprocess(char **arr, int num_words)
+{
+	for (int i = 0; i < num_words; i++) {
+		char *cur_word = arr[i];
+
+		if (is_suit_for_sub(cur_word)) {
+			char *directive = get_sub_directive(cur_word);
+			char *subs = get_sub_directory(directive);
+			char *new_cur_word = do_sub(cur_word, directive, subs);
+
+			free(cur_word);
+			free(directive);
+			free(subs);
+			arr[i] = new_cur_word;
+		}
+	}
+}
+
 int main(void)
 {
 	while (1) {
@@ -206,6 +286,7 @@ int main(void)
 		if (arr == NULL) {
 			continue;
 		}
+		preprocess(arr, num_words);
 		handle_command(arr, num_words);
 		//this should be alwys be last
 		free_all(arr, num_words);
