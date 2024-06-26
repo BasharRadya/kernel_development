@@ -8,7 +8,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <errno.h>
-
+#include <sys/wait.h>
 char *get_current_dir_name(void);
 
 void print_pwd(void)
@@ -23,13 +23,13 @@ void print_pwd(void)
 int sub_split(char *s, int start)
 {
 	int count = 0;
-
 	while (!isspace(s[start]) && s[start] != '\0') {
 		count++;
 		start++;
 	}
 	return count;
 }
+
 char *make_sub_spliot(char *s, int start, int end)
 {
 	int sz = end - start + 1;
@@ -41,6 +41,7 @@ char *make_sub_spliot(char *s, int start, int end)
 	new_s[sz - 1] = '\0';
 	return new_s;
 }
+
 char **split(char *s, int *num_of_words)
 {
 	int length = strlen(s);
@@ -53,6 +54,7 @@ char **split(char *s, int *num_of_words)
 
 		if (tmp != 0) {
 			char *c = make_sub_spliot(s, i, i + tmp);
+
 			arr[num_words] = c;
 			num_words++;
 			i = i + tmp;
@@ -74,8 +76,8 @@ char **get_input(int *x)
 		free(input);
 		return NULL;
 	} else if (byteread != -1) {
-		//delete \n at the end and if tis not their then we are
-		// overriding null terminator with null terminator
+		// delete \n at the end and if tis not their then
+		// we are overriding null terminator with null terminator
 		input[strcspn(input, "\n")] = '\0';
 		char **arr = split(input, x);
 
@@ -92,6 +94,15 @@ void free_all(char **c, int num_of_words)
 		free(c[i]);
 	}
 	free((char *)c);
+}
+
+void do_execv(char **arr, int num_words, int start)
+{
+	//there is enough space in arr
+	arr[num_words] = NULL;
+	execv(arr[start], &arr[start]);
+	perror("error in execv");
+	// execv(const char *path, char *const argv[]);
 }
 void handle_command(char **arr, int num_words)
 {
@@ -112,17 +123,32 @@ void handle_command(char **arr, int num_words)
 
 	} else if (strcmp(arr[0], "exec") == 0) {
 		if (num_words < 2) {
-			fprintf(stderr, "exec takes at least one argument\n");
+			fprintf(stderr,
+				"exec only takes at least one argument\n");
 			return;
 		}
-		arr[num_words] = NULL;
+		do_execv(arr, num_words, 1);
+	} else if (arr[0][0] == '.' || arr[0][0] == '/') {
+		pid_t pid;
 
-		execv(arr[1], &arr[1]);
-		perror("error in exec cmd");
-		// execv(const char *path, char *const argv[]);
+		pid = fork();
+		if (pid < 0) {
+			perror("Fork failed");
+			exit(EXIT_FAILURE);
+		} else if (pid == 0) {
+			do_execv(arr, num_words, 0);
+			exit(EXIT_FAILURE);
+		} else {
+			pid_t child_pid = waitpid(pid, NULL, 0);
+
+			if (child_pid == -1) {
+				perror("Waitpid failed");
+			}
+		}
 	} else {
 		fprintf(stderr, "Unrecognized command: %s\n", arr[0]);
 	}
+	//this should be alwys be last
 }
 int main(void)
 {
