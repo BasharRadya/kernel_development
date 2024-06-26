@@ -272,7 +272,7 @@ bool handle_out_redirection(char *path)
 {
 	bool result = true;
 	int filefd = open(path, O_WRONLY | O_CREAT,
-			  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+					  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	if (filefd == -1) {
 		result = false;
@@ -499,10 +499,10 @@ void do_execv(char **arr, int num_words, int start)
 }
 
 bool handle_command(CMD cmd, int num_words, PIPE_HANDLER first_pipe,
-			PIPE_HANDLER second_pipe, bool is_only_command);
+					PIPE_HANDLER second_pipe, bool is_only_command);
 
 void some_name(CMD cmd, int num_words, PIPE_HANDLER first_pipe,
-		   PIPE_HANDLER second_pipe)
+			   PIPE_HANDLER second_pipe)
 {
 	char **arr = cmd->args;
 	char *path = getenv("PATH");
@@ -523,7 +523,7 @@ void some_name(CMD cmd, int num_words, PIPE_HANDLER first_pipe,
 			free(arr[0]);
 			arr[0] = new_c;
 			handle_command(cmd, num_words, first_pipe, second_pipe,
-					   false);
+						   false);
 			break;
 		}
 	}
@@ -545,7 +545,7 @@ void restore_in_out(int spare_in, int spare_out)
 bool redirection_preprocess(char *in, char *out);
 
 bool handle_command(CMD cmd, int num_words, PIPE_HANDLER first_pipe,
-			PIPE_HANDLER second_pipe, bool is_only_command)
+					PIPE_HANDLER second_pipe, bool is_only_command)
 {
 	char **arr = cmd->args;
 
@@ -591,7 +591,7 @@ bool handle_command(CMD cmd, int num_words, PIPE_HANDLER first_pipe,
 			cmd->args = cmd->args + 1;
 			cmd->n = cmd->n - 1;
 			handle_command(cmd, num_words - 1, first_pipe,
-					   second_pipe, false);
+						   second_pipe, false);
 			cmd->args = cmd->args - 1;
 			cmd->n = cmd->n + 1;
 			return true;
@@ -663,14 +663,14 @@ char *get_sub_directory(char *directive)
 	if (length == 0) {
 		char *env = getenv("HOME");
 		char *new_env =
-			(char *)malloc(sizeof(char) * (strlen(env) + 1));
+				(char *)malloc(sizeof(char) * (strlen(env) + 1));
 
 		strcpy(new_env, env);
 		return new_env;
 	} else {
 		struct passwd *pwd = getpwnam(directive);
 		char *new_dir = (char *)malloc(sizeof(char) *
-						   (strlen(pwd->pw_dir) + 1));
+				(strlen(pwd->pw_dir) + 1));
 
 		strcpy(new_dir, pwd->pw_dir);
 		return new_dir;
@@ -686,7 +686,7 @@ char *do_sub(char *cur_word, char *directive, char *subs)
 		sprintf(new_dir, "%s", subs);
 	} else {
 		sprintf(new_dir, "%s%s", subs,
-			(cur_word + (strlen(directive) + 1)));
+				(cur_word + (strlen(directive) + 1)));
 	}
 	return new_dir;
 }
@@ -816,11 +816,6 @@ int main(void)
 
 		CMD *cmd_arr = get_input(&num_cmds);
 
-		if (num_cmds > 1) {
-			free_cmd_list(cmd_arr, num_cmds);
-			fprintf(stderr, "Pipes are not supported\n");
-			continue;
-		}
 		if (cmd_arr == NULL) {
 			continue;
 		}
@@ -836,11 +831,11 @@ int main(void)
 			if (cmd_arr[i] != NULL) {
 				if (cmd_arr[i]->in != NULL) {
 					preprocess_single_and_replace_free_if_needed
-						(&cmd_arr[i]->in);
+							(&cmd_arr[i]->in);
 				}
 				if (cmd_arr[i]->out != NULL) {
 					preprocess_single_and_replace_free_if_needed
-						(&cmd_arr[i]->out);
+							(&cmd_arr[i]->out);
 				}
 				preprocess(cmd_arr[i]->args, cmd_arr[i]->n);
 				bool is_only_command = num_cmds == 1;
