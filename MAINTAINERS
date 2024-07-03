@@ -12,4 +12,13 @@ F:	bashar-osama/P0/main.c
 =======
 # Add E1/questions.txt
 M:	bashar-osama@spring2024-iit.kdlp.underground.software
+<<<<<<< HEAD
 >>>>>>> P1 commit
+=======
+
+# Add E1/strace_user
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+
+# Add E1/strace_root
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+>>>>>>> P2 commit

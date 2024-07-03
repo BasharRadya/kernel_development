@@ -1,0 +1,17 @@
+execve("./../../E1/program_amd64", ["./../../E1/program_amd64"], 0x7ffe3e1420f0 /* 15 vars */) = 0
+openat(AT_FDCWD, "/etc/passwd", O_RDONLY) = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=2567, ...}) = 0
+mmap(NULL, 2567, PROT_READ, MAP_PRIVATE, 3, 0) = 0x7f00753e7000
+close(3)                                = 0
+getuid()                                = 0
+munmap(0x7f00753e7000, 2567)            = 0
+getrandom("\xce", 1, 0)                 = 1
+gettimeofday({tv_sec=1719862122, tv_usec=432715}, NULL) = 0
+getpid()                                = 1875
+openat(AT_FDCWD, "log.txt", O_RDWR|O_CREAT, 0600) = 3
+lseek(3, 0, SEEK_END)                   = 235
+write(3, "Timestamp: 1719862122 Pid: 1875 "..., 49) = 49
+write(3, "Your username is root your user "..., 64) = 64
+close(3)                                = 0
+exit(0)                                 = ?
++++ exited with 0 +++
