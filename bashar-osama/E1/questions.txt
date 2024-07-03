@@ -1,44 +1,71 @@
 0. What assembly instructions prepare the arguments for your system call, specify the system call number, and invoke the kernel on your local architecture?
 
-*answer here*
+
+architecture:- amd64
+prepare arguments:-
+400110:       48 8d 74 24 18          lea    0x18(%rsp),%rsi
+400115:       89 c7                   mov    %eax,%edi
+
+specify syscall number:-
+40073d:       48 c7 c0 05 00 00 00    mov    $0x5,%rax
+
+invoke kernel:-
+4006fe:       0f 05                   syscall
+
 
 1. What are the corresponding line(s) in the output from running the program under strace?
 
-*answer here*
+fstat(3, {st_mode=S_IFREG|0644, st_size=2567, ...}) = 0
 
 2. What does your system call do?
 
-*answer here*
+fstat gets file descriptor and a pointer to a stat struct,and the function
+fills the stat struct with information about the file(corresponding to the FD)
 
 3. What are your system call's parameters and what are their purposes?
 
-*answer here*
+file descriptor(int):- to identify the file being investigated
+stat struct pointer(struct stat *buf):- struct memory to be filled by the syscall and later
+viewed by userspace
 
 4. What arguments is the program passing to your system call and what do they mean?
 
-*answer here*
+FD = 3
+struct str:- strace dereference the pointer to show the struct content but its trash content
+since it was not initialized.
 
 5. What is your best estimate of the higher-level purpose of your system call in the program? (i.e. what was the author trying to accomplish?)
 
-*answer here*
+the higher purpose was to get the file size so we can put it to mmap (to map all the file)
+so we got it from st_size from stat struct
 
 6. What is the filename and line number of the definition of the system call in the Linux source code? (i.e. the line starting with SYSCALL_DEFINE...)
 
-*answer here*
+file path in linux :- /fs/stat.c
+old fstat:-
+line 379
+SYSCALL_DEFINE2(fstat, unsigned int, fd, struct __old_kernel_stat __user *, statbuf)
+new fstat:-
+line 475
+SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf)
+note:- in entery table fstat points to the newfstat syscall rather than fstat.
+newfstat is a new version of fstat, and the old fstat was no removed due to compatibility conecerns.
 
 7. Use `git blame` to identify who last modified any of the lines in the function you located in question 5.
 Who is the name and email of the author?
 
-*answer here*
+Heiko Carstens , Author: Heiko Carstens <hca@linux.ibm.com>
 
 8. What is the commit hash for the commit that introduced those changes?
 
-*answer here*
+commit 257ac264d69017270fbc3cf5536953525db4076c
+
 
 9. What was the reason for the change?
 
-*answer here*
+change from asmlinkage long sys_newfstat(unsigned int fd, struct stat __user *statbuf) to SYSCALL_DEFINE2(newfstat, unsigned int, fd, struct stat __user *, statbuf) is part of an effort to modernize and standardize the way system calls are defined in the Linux kernel.
 
 10. Why do you think it was merged into the master branch?
 
-*answer here*
+[CVE-2009-0029] System call wrappers part 11
+CVE-2009-0029 is a vulnerability in the Linux kernel where system call wrappers were not implemented correctly. This could potentially allow local users to execute arbitrary code with elevated privileges by exploiting race conditions or other flaws in the way system calls were handled.
