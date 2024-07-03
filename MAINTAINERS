@@ -33,4 +33,10 @@ M:	bashar-osama@spring2024-iit.kdlp.underground.software
 # Add E1/trace.out
 M:	bashar-osama@spring2024-iit.kdlp.underground.software
 >>>>>>> c83028b (P3 commit)
+<<<<<<< HEAD
 >>>>>>> P3 commit
+=======
+
+# Add E1/log.txt
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+>>>>>>> P5 commit
