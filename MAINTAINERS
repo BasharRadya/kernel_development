@@ -5,6 +5,11 @@
 - Directory: bashar-osama/
 - Lead: bashar-osama <bashar-osama@spring2024-iit.kdlp.underground.software>
 
+<<<<<<< HEAD
 # Add main.c
 M:	bashar-osama@spring2024-iit.kdlp.underground.software
 F:	bashar-osama/P0/main.c
+=======
+# Add E1/questions.txt
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+>>>>>>> P1 commit
