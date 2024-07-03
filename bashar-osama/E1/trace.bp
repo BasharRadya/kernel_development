@@ -1,0 +1,8 @@
+#!/usr/bin/env bpftrace
+// SPDX-License-Identifier: MIT
+
+kprobe:__x64_sys_newfstat {
+        printf("%s\n", kstack());
+        printf("User stack:\n");
+        printf("%s\n", ustack());
+}

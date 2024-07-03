@@ -1,0 +1,10 @@
+Attaching 1 probe...
+Entering newfstatat: PID 1692, FD 1075969880, stat sturc pointer 5
+
+        __x64_sys_newfstat+5
+        do_syscall_64+130
+        entry_SYSCALL_64_after_hwframe+118
+
+User stack:
+
+        0x400700

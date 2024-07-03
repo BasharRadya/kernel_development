@@ -21,4 +21,16 @@ M:	bashar-osama@spring2024-iit.kdlp.underground.software
 
 # Add E1/strace_root
 M:	bashar-osama@spring2024-iit.kdlp.underground.software
+<<<<<<< HEAD
 >>>>>>> P2 commit
+=======
+<<<<<<< HEAD
+=======
+
+# Add E1/trace.bp
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+
+# Add E1/trace.out
+M:	bashar-osama@spring2024-iit.kdlp.underground.software
+>>>>>>> c83028b (P3 commit)
+>>>>>>> P3 commit
