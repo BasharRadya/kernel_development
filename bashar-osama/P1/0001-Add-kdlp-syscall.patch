@@ -1,0 +1,99 @@
+From cdd6c1f62f37e7bb0c496b98d577702a0669f187 Mon Sep 17 00:00:00 2001
+From: bashar-osama <bashar-osama@spring2024-iit.kdlp.underground.software>
+Date: Wed, 17 Jul 2024 22:49:26 +0300
+Subject: [PATCH] Add kdlp syscall
+
+Add kdlp syscall on x86, kdlp syscall takes 2 arguments, first
+argument is char* buffer and size_t  of the buffer, and prints
+team mate names with cmd name running on current task
+
+Signed-off-by: bashar-osama <bashar-osama@spring2024-iit.kdlp.underground.software>
+---
+ arch/x86/entry/syscalls/syscall_64.tbl |  1 +
+ include/linux/syscalls.h               |  2 ++
+ kernel/Makefile                        |  3 ++-
+ kernel/kdlp.c                          | 32 ++++++++++++++++++++++++++
+ 4 files changed, 37 insertions(+), 1 deletion(-)
+ create mode 100644 kernel/kdlp.c
+
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 227538b0c..ab4bdefa6 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -373,6 +373,7 @@
+ 449	common	futex_waitv		sys_futex_waitv
+ 450	common	set_mempolicy_home_node	sys_set_mempolicy_home_node
+ 451	common	cachestat		sys_cachestat
++452	common  kdlp			sys_kdlp
+ 
+ #
+ # Due to a historical design error, certain syscalls are numbered differently
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 03e3d0121..7171c276a 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1166,6 +1166,8 @@ asmlinkage long sys_mmap_pgoff(unsigned long addr, unsigned long len,
+ 			unsigned long fd, unsigned long pgoff);
+ asmlinkage long sys_old_mmap(struct mmap_arg_struct __user *arg);
+ 
++asmlinkage long sys_kdlp(const char __user *buf, size_t count);
++
+ 
+ /*
+  * Not a real system call, but a placeholder for syscalls which are
+diff --git a/kernel/Makefile b/kernel/Makefile
+index 3947122d6..5b865bc70 100644
+--- a/kernel/Makefile
++++ b/kernel/Makefile
+@@ -10,7 +10,8 @@ obj-y     = fork.o exec_domain.o panic.o \
+ 	    extable.o params.o \
+ 	    kthread.o sys_ni.o nsproxy.o \
+ 	    notifier.o ksysfs.o cred.o reboot.o \
+-	    async.o range.o smpboot.o ucount.o regset.o ksyms_common.o
++	    async.o range.o smpboot.o ucount.o regset.o ksyms_common.o \
++	    kdlp.o
+ 
+ obj-$(CONFIG_USERMODE_DRIVER) += usermode_driver.o
+ obj-$(CONFIG_MULTIUSER) += groups.o
+diff --git a/kernel/kdlp.c b/kernel/kdlp.c
+new file mode 100644
+index 000000000..3b5d5a7f2
+--- /dev/null
++++ b/kernel/kdlp.c
+@@ -0,0 +1,32 @@
++#include <linux/kernel.h>
++#include <linux/syscalls.h>
++#include <linux/uaccess.h>
++#include <linux/sched.h>
++
++SYSCALL_DEFINE2(kdlp, char __user *, buf, size_t, count)
++{
++	char kbuf[19 + TASK_COMM_LEN + 1]; // +1 for null terminator
++	char task_comm[TASK_COMM_LEN];
++	size_t len;
++	size_t msg_len;
++
++	if (count <= 0 || !buf)
++		return -EINVAL;
++
++	get_task_comm(task_comm, current);
++
++	msg_len = snprintf(kbuf, sizeof(kbuf), "bashar-osama[task:%s]",
++			   task_comm);
++
++	if (msg_len >= sizeof(kbuf))
++		return -ENOMEM; // this is for me to check that i gave suffiecent kbuf
++
++	len = min(msg_len + 1, count);
++	if (len == count && (count < (msg_len + 1)))
++		kbuf[count - 1] = '\0';
++
++	if (copy_to_user(buf, kbuf, len))
++		return -EFAULT;
++
++	return len;
++}
+\ No newline at end of file
+-- 
+2.45.2
+
