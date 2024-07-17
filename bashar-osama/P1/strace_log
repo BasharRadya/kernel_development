@@ -1,0 +1,6 @@
+execve("./test_kdlp_asm", ["./test_kdlp_asm"], 0x7fffece91e60 /* 30 vars */) = 0
+fchmodat2(4202528, 0x24, 000, 0)        = 33
+write(1, "bashar-osama[task:test_kdlp_asm]"..., 33) = 33
+write(1, "\n", 1)                       = 1
+exit(0)                                 = ?
++++ exited with 0 +++
