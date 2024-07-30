@@ -1,0 +1,26 @@
+KDLP proc module
+
+This module will create an entry in `/proc` that holds a fixed message for all users to read.
+
+The file will show up in `/proc` as a file named kdlp.
+
+The file will be owned by user root and group root.
+
+The permissions for the file will be 0444 (read only for owner/group/others).
+
+Operations:
+	- Read:
+		user will read from /proc a fixed message "bashar-osama love linux"
+		when reads a file in /proc:- the string is generated on the fly
+		interacting with file position:- reading x bytes will advance the file position by x.
+		edge cases:- seq_read is the helper function that is called upon when read syscall is invoked, it handles
+		all the edge cases gracfully inside the kernel, and copies the data to user buffer etc...
+		copy_to_user is the safe function used within seq_read that gracfully handles any nested intterupts
+		without crashing the kernel and provides an error indication to the calling function
+		so the kernel can propagate the error to the user
+		describe what value will be returned:- On success, the number of bytes read is returned
+		(zero indicates end of file), On error, -ERROR_NUMBER is returned.
+	- Write:
+		no permission to write.
+	- Seek: the seek user interface for a seq_file is the same as normal file so using it is not
+		any different. the signature lseek function is off_t lseek(int fd, off_t offset, int whence)
