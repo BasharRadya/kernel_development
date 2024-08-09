@@ -10,3 +10,6 @@ load:
 	sudo insmod ctf.ko
 unload:
 	-sudo rmmod ctf
+
+build_test:
+	gcc -o ctf_program ctf_program.c
