@@ -879,6 +879,345 @@ TEST_BODY(advanced_keycount, {
 	assert_eq(key_count, 2, "there should be 2 keys");
 })
 
+#define NUM_THREADS 20
+#define SUCCESS ((void *)2)
+#define FAILURE ((void *)1)
+#define m_assert(a)                     \
+	do {                            \
+		if (!(a)) {             \
+			return FAILURE; \
+		}                       \
+	} while (0)
+
+void *simple_concurrency_func(void *arg)
+{
+	int fd = open(MOD_PATH, 0);
+
+	m_assert(fd > 0);
+	int res = ioctl(fd, HCD_MOVE_ROOM, "croom");
+
+	m_assert(res == 0);
+	hcd_pair read_pair;
+
+	strncpy(read_pair.key, "key", sizeof(read_pair.key));
+	hcd_key buffer;
+
+	read_pair.value = buffer;
+	int size = strlen("value") + 1;
+	int ret = read(fd, &read_pair, size);
+
+	m_assert(ret == 0);
+	return SUCCESS;
+}
+
+TEST_DEFINE(simple_concurrency);
+TEST_BODY(simple_concurrency, {
+	pthread_t threads[NUM_THREADS];
+	hcd_create_info info;
+	int fd = open(MOD_PATH, 0);
+
+	assert_eq(fd > 0, true, "open should succeed");
+
+	info.name = "croom";
+	info.flags = HCD_O_PUBLIC;
+
+	int res = ioctl(fd, HCD_CREATE_ROOM, &info);
+
+	assert_eq(res, 0, "create room should succeed");
+
+	hcd_pair write_pair;
+
+	strncpy(write_pair.key, "key", sizeof(write_pair.key));
+	write_pair.value = "value";
+	int size = strlen("value") + 1;
+	int ret = write(fd, &write_pair, size);
+
+	assert_eq(ret, 0, "write shouldn't fail");
+
+	int rc;
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		rc = pthread_create(&threads[i], NULL, simple_concurrency_func,
+				    NULL);
+		assert_eq(rc, 0, "thread should be created");
+	}
+	void *result[NUM_THREADS];
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], result + i);
+	}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		assert_eq(result[i], SUCCESS, "thread should succeed");
+	}
+});
+
+TEST_DEFINE(invalid_room_name);
+TEST_BODY(invalid_room_name, {
+    hcd_create_info info;
+    int fd = open(MOD_PATH, 0);
+
+    assert_eq(fd > 0, true, "open should succeed");
+
+    info.name = "\ncroom";
+    info.flags = HCD_O_PUBLIC;
+
+    int res = ioctl(fd, HCD_CREATE_ROOM, &info);
+
+    assert_eq(res, -1, "create room should fail");
+    assert_eq(errno, EINVAL, "errno should contain EINVAL");
+});
+
+void *simple_concurrency2_func(void *arg)
+{
+	int cnt = (int)arg;
+	hcd_key key;
+
+	for (int i = 0; i < cnt + 1; i++) {
+		key[i] = 'a';
+	}
+	key[cnt + 1] = '\0';
+	int fd = open(MOD_PATH, 0);
+
+	m_assert(fd > 0);
+	int res = ioctl(fd, HCD_MOVE_ROOM, "write-room");
+
+	m_assert(res == 0);
+	hcd_pair write_pair;
+
+	strncpy(write_pair.key, key, sizeof(write_pair.key));
+	write_pair.value = "value";
+	int size = strlen("value") + 1;
+	int ret = write(fd, &write_pair, size);
+
+	m_assert(ret == 0);
+	return SUCCESS;
+}
+
+TEST_DEFINE(simple_concurrency2);
+TEST_BODY(simple_concurrency2, {
+	pthread_t threads[NUM_THREADS];
+	hcd_create_info info;
+	int fd = open(MOD_PATH, 0);
+
+	assert_eq(fd > 0, true, "open should succeed");
+
+	info.name = "write-room";
+	info.flags = HCD_O_PUBLIC;
+
+	int res = ioctl(fd, HCD_CREATE_ROOM, &info);
+
+	assert_eq(res, 0, "create room should succeed");
+
+	//    hcd_pair write_pair;
+	//    strncpy(write_pair.key, "key", sizeof(write_pair.key));
+	//    write_pair.value = "value";
+	//    int size = strlen("value") + 1;
+	//    int ret = write(fd, &write_pair, size);
+	//    assert_eq(ret, 0, "write shouldn't fail");
+
+	int rc;
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		rc = pthread_create(&threads[i], NULL, simple_concurrency2_func,
+				    (void *)i);
+		assert_eq(rc, 0, "thread should be created");
+	}
+	void *result[NUM_THREADS];
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], result + i);
+	}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		assert_eq(result[i], SUCCESS, "thread should succeed");
+	}
+
+	int cnt = ioctl(fd, HCD_KEY_COUNT, NULL);
+
+	assert_eq(cnt, 20, "count should be equal to the number of threads");
+});
+
+void *simple_concurrency3_func(void *arg)
+{
+	int cnt = (int)arg;
+	hcd_key key;
+
+	for (int i = 0; i < cnt + 1; i++) {
+		key[i] = 'a';
+	}
+	key[cnt + 1] = '\0';
+	int fd = open(MOD_PATH, 0);
+
+	m_assert(fd > 0);
+	hcd_create_info info;
+
+	info.name = key;
+	info.flags = HCD_O_PUBLIC;
+	int res = ioctl(fd, HCD_CREATE_ROOM, &info);
+
+	m_assert(res == 0);
+	return SUCCESS;
+}
+
+TEST_DEFINE(simple_concurrency3);
+TEST_BODY(simple_concurrency3, {
+	pthread_t threads[NUM_THREADS];
+
+	int rc;
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		rc = pthread_create(&threads[i], NULL, simple_concurrency3_func,
+				    (void *)i);
+		assert_eq(rc, 0, "thread should be created");
+	}
+	void *result[NUM_THREADS];
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], result + i);
+	}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		assert_eq(result[i], SUCCESS, "thread should succeed");
+	}
+});
+
+void *simple_concurrency4_func(void *arg)
+{
+	int cnt = (int)arg;
+	hcd_key key;
+
+	for (int i = 0; i < cnt + 1; i++) {
+		key[i] = 'a';
+	}
+	key[cnt + 1] = '\0';
+	int fd = open(MOD_PATH, 0);
+
+	m_assert(fd > 0);
+	hcd_create_info info;
+
+	info.name = key;
+	info.flags = HCD_O_PUBLIC;
+	int res = ioctl(fd, HCD_CREATE_ROOM, &info);
+
+	m_assert(res == 0);
+	hcd_key name;
+
+	for (int i = 0; i < cnt; i++) {
+		for (int j = 0; j < i + 1; j++) {
+			name[j] = 'a';
+		}
+		name[i + 1] = '\0';
+		hcd_pair pair;
+
+		strncpy(pair.key, name, sizeof(hcd_key));
+		pair.value = "here";
+		int size = strlen("here") + 1;
+
+		res = write(fd, &pair, size);
+		m_assert(res == 0);
+	}
+	int count = ioctl(fd, HCD_KEY_COUNT, NULL);
+
+	m_assert(count == cnt);
+	return SUCCESS;
+}
+
+TEST_DEFINE(simple_concurrency4);
+TEST_BODY(simple_concurrency4, {
+	pthread_t threads[NUM_THREADS];
+
+	int rc;
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		rc = pthread_create(&threads[i], NULL, simple_concurrency4_func,
+				    (void *)i);
+		assert_eq(rc, 0, "thread should be created");
+	}
+	void *result[NUM_THREADS];
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], result + i);
+	}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		assert_eq(result[i], SUCCESS, "thread should succeed");
+	}
+});
+
+void *simple_concurrency5_func(void *arg)
+{
+	int cnt = ((int)arg) / 2;
+	bool is_odd = ((int)arg) % 2;
+	bool is_even = !is_odd;
+	int fd = open(MOD_PATH, 0);
+
+	m_assert(fd > 0);
+
+	hcd_key key;
+
+	for (int i = 0; i < cnt + 1; i++) {
+		key[i] = 'a';
+	}
+	key[cnt + 1] = '\0';
+
+	if (is_even) {
+		hcd_create_info info;
+
+		info.name = key;
+		info.flags = HCD_O_PUBLIC;
+		int res = ioctl(fd, HCD_CREATE_ROOM, &info);
+
+		m_assert(res == 0);
+		hcd_pair pair;
+
+		strncpy(pair.key, "here", sizeof(hcd_key));
+		pair.value = "here";
+		int size = strlen("here") + 1;
+
+		res = write(fd, &pair, size);
+		m_assert(res == 0);
+	} else {
+		int res = 1;
+
+		while (res != 0) {
+			res = ioctl(fd, HCD_MOVE_ROOM, key);
+		}
+		res = 1;
+		hcd_key val;
+
+		strcpy(val, "    ");
+		hcd_pair pair;
+
+		strncpy(pair.key, "here", sizeof(hcd_key));
+		pair.value = val;
+		int size = strlen("here") + 1;
+
+		while (res != 0) {
+			res = read(fd, &pair, size);
+		}
+		m_assert(strcmp(pair.value, "here") == 0);
+	}
+	return SUCCESS;
+}
+
+TEST_DEFINE(simple_concurrency5);
+TEST_BODY(simple_concurrency5, {
+	pthread_t threads[NUM_THREADS];
+
+	int rc;
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		rc = pthread_create(&threads[i], NULL, simple_concurrency5_func,
+				    (void *)i);
+		assert_eq(rc, 0, "thread should be created");
+	}
+	void *result[NUM_THREADS];
+
+	for (int i = 0; i < NUM_THREADS; i++) {
+		pthread_join(threads[i], result + i);
+	}
+	for (int i = 0; i < NUM_THREADS; i++) {
+		assert_eq(result[i], SUCCESS, "thread should succeed");
+	}
+});
+
 int main(void)
 {
 	// basics
@@ -909,7 +1248,13 @@ int main(void)
 	RUN_TEST(check_moving_room);
 	RUN_TEST(check_room_write_permission);
 	RUN_TEST(check_room_delete_permission);
+    RUN_TEST(invalid_room_name);
 	RUN_TEST(advanced_override);
 	RUN_TEST(advanced_keycount);
+	RUN_TEST(simple_concurrency);
+	RUN_TEST(simple_concurrency2);
+	RUN_TEST(simple_concurrency3);
+	RUN_TEST(simple_concurrency4);
+	RUN_TEST(simple_concurrency5);
 	printf("SUMMARY: %d/%d tests failed\n", tests_failed, test_count);
 }

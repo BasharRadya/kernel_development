@@ -1,5 +1,5 @@
 CC = gcc
-FLAGS = -Wall -Werror -Wpedantic
+FLAGS = -Wall -pthread
 TARGET = test
 
 .PHONY: build clean run all
