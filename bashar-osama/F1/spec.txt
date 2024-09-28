@@ -1,55 +1,61 @@
 Hashmap Char Device
 
-Intro:
+	Intro :
 
-The purpose of the module is to implement a dynamic room system.
-Each room contains a dictionary that is shared between all processes inside the
-room.
+	The purpose of the module is to implement a dynamic room
+		system.Each room contains a dictionary that is shared between
+			all processes inside the
+				room.
 
-The dictionary operates with { key, value } pairs.
-Processes will be able to read and write from the dictionary of their current
-room, create new rooms, move between rooms and dump the dictionary.
+	The dictionary operates with{ key, value } pairs.Processes will be able
+		to read and write from the dictionary of their current room,
+	create new rooms,
+	move between rooms and dump the dictionary
+		.
 
-Each process can be a part of multiple rooms.
+	Each process can be a part of multiple rooms
+		.
 
-Pay attention to the *Usage* entry in each syscall specification.
-It's very important to synchronize writes and reads in each room, to not be in
-an inconsistent state.
-The system is meant to work with many processes!
+	Pay attention to the *Usage *entry in each syscall specification
+		.It's very important to synchronize writes and reads in each room, to not be in an
+			inconsistent state.The
+				system is meant to work with many processes !
 
-Intended Usage:
+	Intended Usage :
 
-The most notable usage of this module would be to share configurations across
-programs in a more flexible and dynamic way, when compared to environment
-variables.
-Think about a WM (window manager) that has lots of configurations that might be
-interesting to other programs, such as the task bar, lock screen, terminal
-emulator, etc.
-With HCD (Hashmap Char Device), the WM could define these configurations in a
-protected room (see HCD_O_PROTECTED below) with a common name, such as
-"HCD_INSERT_WM_NAME" (that can be stored as an env var), and all programs can
-access it. They can then request to change some configurations, and given user
-permissions these changes could take effect.
+	The most notable usage of this module would be to share configurations
+		across programs in a more flexible and dynamic way,
+	when compared to environment variables.Think about a
+	WM(window manager) that has lots of configurations that might be
+	interesting to other programs,
+	such as the task bar, lock screen, terminal emulator,
+	etc.With HCD(Hashmap Char Device),
+	the WM could define these configurations in a
+	protected room(see HCD_O_PROTECTED below) with a common name,
+	such as "HCD_INSERT_WM_NAME"(that can be stored as an env var),
+	and all programs can access it.They can then request to change some
+	    configurations,
+	and given user permissions these changes could take effect.
 
-Structure Definitions:
+	    Structure Definitions :
 
 #define HCD_KEYSIZE 32
 
-typedef char hcd_key[HCD_KEYSIZE];
+	typedef char hcd_key[HCD_KEYSIZE];
 
 struct hcd_pair {
-        hcd_key key;
-        void *value;
+	hcd_key key;
+	void *value;
 };
 
 struct hcd_create_info {
-        char *name;
-        int flags;
+	char *name;
+	int flags;
 };
 
 struct hcd_keys {
-        hcd_key *keys;
-        unsigned int count;
+	hcd_key *keys;
+	unsigned int count;
 }
 
 Resource Management:
@@ -69,7 +75,7 @@ Userland API:
 - int open(char *path, int flags)
 Description:
         Opens a new anonymous room for the caller.
-        Ignores the flags argument.
+        Ignores the flags argument. Read-write permissions should always be given.
 
 Return Value:
         On success, returns the new file descriptor.
@@ -94,11 +100,10 @@ Errors:
 
 Usage:
         int room = open("insert_name", 0);
-        /* do work */
-        close(room);
+/* do work */
+close(room);
 
-
-- int read(int room, struct hcd_pair *pair, size_t count)
+- int read(int room, void *pair, size_t count)
 Description:
         Reads the value corresponding to pair->key into pair.value.
         Reads only if count is big enough to contain the value.
@@ -114,32 +119,30 @@ Errors:
 
 Usage:
         struct hcd_pair pair;
-        strncpy(pair.key, "name", sizeof(pair.key));
-        int len = read(room, &pair, 0);
-        /* error handling */
-        read(room, &pair, len);
+strncpy(pair.key, "name", sizeof(pair.key));
+int len = read(room, &pair, 0);
+/* error handling */
+read(room, &pair, len);
 
-- write(int room, struct hcd_pair *pair, size_t count)
-Description:
-        Writes count bytes from pair->value to the entry associated with
-        pair->key.
-        On success, overrides the previous value (if there is).
+- write(int room, void *pair, size_t count)
+	Description:Writes count bytes from
+		    pair->value to the entry associated with pair->key.On
+		    success,
+		    overrides the previous value(if there is)
+			    .
 
-Return Value:
-        On success, returns 0.
-        On error, -1 is returned and errno is set to indicate the error.
+		    Return
+	      Value:On success, returns 0. On error,
+		    -1 is returned and errno is set to indicate the error.
 
-Errors:
-        EPERM - no write permissions to given room
-        ENOMEM - Insufficient kernel memory.
-        EFAULT - pair.value is outside your accessible address space.
+	     Errors:EPERM - no write permissions to given room ENOMEM -
+		    Insufficient kernel memory.EFAULT -
+		    pair.value is outside your accessible address space.
 
-Usage:
-        struct hcd_pair pair;
-        strncpy(pair.key, "name", sizeof(pair.key));
-        pair.value = "dror-ariel";
-        write(room, &pair, strlen(pair.value));
-
+	      Usage:struct hcd_pair pair;
+strncpy(pair.key, "name", sizeof(pair.key));
+pair.value = "dror-ariel";
+write(room, &pair, strlen(pair.value));
 
 - ioctl commands -
 
@@ -169,6 +172,7 @@ Synopsis:
 
 Description:
         Creates a new named room with the given info->name and points to it.
+	The name of the room must not contain '\n'.
         Flags:
                 HCD_O_PUBLIC - The new room is accessible with readwrite
                 permissions to everyone.
@@ -183,7 +187,7 @@ Errors:
         ENOMEM - Insufficient kernel memory.
         EEXIST - There already exists a room with the given name.
         EFAULT - info->value is outside your accessible address space.
-
+	EINVAL - The given string contains '\n' character.
 Usage:
         struct hcd_create_info create_info;
         create_info.name = "my_new_room";
@@ -248,5 +252,10 @@ Usage:
         int res = ioctl(room, HCD_KEY_DUMP, &keys);
 
         for (int i = 0; i < res; i++) {
-                /* do work */
+	/* do work */
         }
+
+
+Note: 
+	lseek is not relevant for this character device, therefore it should
+	be disabled. It should return -1 with an errno of EPERM.

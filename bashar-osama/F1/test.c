@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -12,7 +13,9 @@
 #include "hcd_module.h"
 #include "tap.h"
 
-#define MOD_PATH "*********CHANGE THIS***********"
+#include <pthread.h>
+
+#define MOD_PATH "/dev/kdlp-character-device"
 
 // coloring
 #define TESTING "\033[1;33mTESTING\033[0m"
@@ -294,7 +297,9 @@ TEST_BODY(invalid_address_read, {
 
 	ret = read(room, &read_pair, size);
 
-	assert_eq(ret, EFAULT, "value is outside of process's access");
+	assert_eq(errno, EFAULT, "value is outside of process's access");
+
+	assert_eq(ret, -1, "write should return -1 on fail");
 })
 
 TEST_DEFINE(override_writes);
@@ -349,11 +354,11 @@ TEST_BODY(override_writes, {
 
 TEST_DEFINE(rooms_dont_share_data);
 TEST_BODY(rooms_dont_share_data, {
-	int fd1 = open(MOD_PATH, O_RDONLY);
+	int fd1 = open(MOD_PATH, 0);
 
 	assert_true(fd1 > 0, "open room 1");
 
-	int fd2 = open(MOD_PATH, O_RDONLY);
+	int fd2 = open(MOD_PATH, 0);
 
 	assert_true(fd2 > 0, "open room 2");
 
@@ -371,15 +376,15 @@ TEST_BODY(rooms_dont_share_data, {
 	pair.value = value2;
 	res = read(fd2, &pair, sizeof(value2));
 
-	assert_eq(res, 0, "check read returns success");
-
-	assert_eq(strcmp(pair.value, "winds of winter"), 0,
-		  "check read returns what write wrote");
+	assert_eq(res, -1, "check read returns failure");
+	assert_eq(errno, EINVAL, "check errno equals EINVAL");
+	//	assert_eq(strcmp(pair.value, "winds of winter"), 0,
+	//		  "check read returns what write wrote");
 })
 
 TEST_DEFINE(create_room);
 TEST_BODY(create_room, {
-	int fd = open(MOD_PATH, O_RDWR);
+	int fd = open(MOD_PATH, 0);
 
 	assert_true(fd > 0, "open module");
 
@@ -395,7 +400,7 @@ TEST_BODY(create_room, {
 
 TEST_DEFINE(move_to_nonexistent_room);
 TEST_BODY(move_to_nonexistent_room, {
-	int fd = open(MOD_PATH, O_RDWR);
+	int fd = open(MOD_PATH, 0);
 
 	assert_true(fd > 0, "open module");
 
@@ -407,7 +412,7 @@ TEST_BODY(move_to_nonexistent_room, {
 
 TEST_DEFINE(key_count);
 TEST_BODY(key_count, {
-	int fd = open(MOD_PATH, O_RDWR);
+	int fd = open(MOD_PATH, 0);
 
 	assert_true(fd > 0, "open module");
 
@@ -438,7 +443,7 @@ TEST_BODY(key_count, {
 
 TEST_DEFINE(delete_changes_key_count);
 TEST_BODY(delete_changes_key_count, {
-	int fd = open(MOD_PATH, O_RDWR);
+	int fd = open(MOD_PATH, 0);
 
 	assert_true(fd > 0, "open module");
 
@@ -473,7 +478,7 @@ TEST_BODY(delete_changes_key_count, {
 
 TEST_DEFINE(key_dump);
 TEST_BODY(key_dump, {
-	int fd = open(MOD_PATH, O_RDWR);
+	int fd = open(MOD_PATH, 0);
 
 	assert_true(fd > 0, "open module");
 
@@ -518,7 +523,7 @@ TEST_BODY(key_dump, {
 
 	bool unexpected_key = false;
 
-	for (int i = 0; i < key_len; i++) {
+	for (int i = 0; i < keys_in_room; i++) {
 		if (strcmp(keys.keys[i], "abb") == 0) {
 			has_abb = true;
 		} else if (strcmp(keys.keys[i], "aab") == 0) {
@@ -531,7 +536,7 @@ TEST_BODY(key_dump, {
 		}
 	}
 
-	assert_eq(unexpected_key, true,
+	assert_eq(unexpected_key, false,
 		  "all keys should be in {abb, aab, aaa}");
 
 	assert_eq(has_abb, true, "abb should be dumped");
@@ -637,7 +642,7 @@ TEST_BODY(check_room_write_permission, {
 	hcd_create_info info;
 
 	info.name = "lovely room";
-	info.flags = HCD_O_PUBLIC;
+	info.flags = HCD_O_PROTECTED;
 
 	int ret = ioctl(room1, HCD_CREATE_ROOM, &info);
 
@@ -656,7 +661,7 @@ TEST_BODY(check_room_write_permission, {
 	write_pair.value = "value";
 	int size = strlen("value") + 1;
 
-	ret = write(room1, &write_pair, size);
+	ret = write(room2, &write_pair, size);
 
 	int errno_copy = errno;
 
@@ -675,7 +680,7 @@ TEST_BODY(check_room_delete_permission, {
 	hcd_create_info info;
 
 	info.name = "lovely room";
-	info.flags = HCD_O_PUBLIC;
+	info.flags = HCD_O_PROTECTED;
 
 	int ret = ioctl(room1, HCD_CREATE_ROOM, &info);
 
@@ -776,7 +781,11 @@ TEST_BODY(advanced_override, {
 
 	assert_false(room1 < 0, "open should return a valid fd");
 
-	int ret = ioctl(room1, HCD_CREATE_ROOM, "dark room");
+	hcd_create_info info_;
+
+	info_.name = "dark room";
+	info_.flags = HCD_O_PUBLIC;
+	int ret = ioctl(room1, HCD_CREATE_ROOM, &info_);
 
 	assert_eq(ret, 0, "create should work");
 
@@ -832,7 +841,12 @@ TEST_BODY(advanced_keycount, {
 
 	assert_false(room1 < 0, "open should return a valid fd");
 
-	int ret = ioctl(room1, HCD_CREATE_ROOM, "dark room");
+	hcd_create_info info_;
+
+	info_.name = "dark room";
+	info_.flags = HCD_O_PUBLIC;
+
+	int ret = ioctl(room1, HCD_CREATE_ROOM, &info_);
 
 	assert_eq(ret, 0, "create should work");
 
@@ -897,6 +911,5 @@ int main(void)
 	RUN_TEST(check_room_delete_permission);
 	RUN_TEST(advanced_override);
 	RUN_TEST(advanced_keycount);
-
 	printf("SUMMARY: %d/%d tests failed\n", tests_failed, test_count);
 }
